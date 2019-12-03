@@ -1,0 +1,171 @@
+---
+title: 'tidytuesday #48: Student Loan Debt'
+author: '@KSchackart'
+output:
+  html_document: default
+  pdf_document: default
+---
+# The Data
+
+Data represented here originally comes from the US Department of Education. These data were fetched from the [tidytuesday Github repo](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-11-26). Information is provided for several financing agencies for student loans in the United States. The information used is the total payments to each lending agency (when available) for the fiscal years 2016-2018. This total is broken down into 4 categories:
+
+* Consolidation
+* Rehabilitation
+* Voluntary Payments
+* Wage Garnishments
+
+# Visualization
+
+## Agency Category Breakdown
+
+Here is how the Total Repayment for each agency breaks down by repayment category, averaged over all years that data were present for that agency.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center", fig.width=10}
+library(tidyverse)
+library(viridis)
+library(GGally)
+library(kableExtra)
+
+# Get the dataset
+loans <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-11-26/loans.csv")
+
+#Clean up the agency names to be uniform
+loans$agency_name[grepl("ACT",loans$agency_name)]<-"Account Control"
+
+for(agency_i in c(
+  "Account Control",
+  "Action Financial Services",
+  "Central Research",
+  "Coast Professional",
+  "Collecto",
+  "Credit Adjustments",
+  "FMS",
+  "GC Services",
+  "Immediate Credit Recovery",
+  "National Recoveries",
+  "Pioneer",
+  "Windham")) {
+    loans$agency_name[grepl(agency_i,loans$agency_name)]<-agency_i 
+}
+
+# Replace NA values with zeroes for calculations
+loans$rehabilitation[is.na(loans$rehabilitation)] <- 0
+
+# Make a new dataframe to compute each repayment type as a portion of total
+loans_relative <- loans %>% 
+  select(c(agency_name, total, consolidation:wage_garnishments)) %>% 
+  transform(consolidation = consolidation/total,
+            rehabilitation = rehabilitation/total,
+            voluntary_payments = voluntary_payments/total,
+            wage_garnishments = wage_garnishments/total)
+  
+# Create a summary dataframe organized by agency_name
+loan_summary <- loans_relative %>% 
+  group_by(agency_name) %>% 
+  summarize(total = mean(total)/(10^6),
+            consolidation = mean(consolidation),
+            rehabilitation = mean(rehabilitation),
+            voluntary_payments = mean(voluntary_payments),
+            wage_garnishments = mean(wage_garnishments))
+  
+# Rearrange data for stacked column plot
+bar_df <- loan_summary %>% 
+  gather(consolidation, voluntary_payments, rehabilitation, wage_garnishments,
+         key = "source", value = "proportion") %>% 
+  arrange(total)
+
+# Generate a name vector for the column plot to include total repayment amount for agency
+names_list <- NULL
+for(nam in unique(bar_df$agency_name)){
+  names_list <- append(names_list, paste0(nam," ($",round(unique(bar_df$total[bar_df$agency_name == nam]),0),"M)"))
+}
+
+# Generate a label vector for the plots
+labs <- c("Consolidation", "Rehabilitation", "Voluntary", "Wage Garnishment")
+
+# Geneate column plot
+column_plot <- ggplot(bar_df) +
+  geom_col(mapping = aes(x = agency_name, y = proportion, fill = source)) +
+  coord_flip() + xlab(NULL) + ylab("Portion of Total Repayments for Agency") +
+  ggtitle("Portion of Repayments by Source", 
+          subtitle = "Mean Total Repayments in Descending Order") +
+  scale_fill_brewer(palette = "Accent") +
+  scale_fill_discrete(name = "Payment Category", labels = labs) +
+  scale_x_discrete(labels = names_list)
+column_plot
+```
+
+While this is interesting if you are curious about each individual agency, it does not give much insight into any over all trends. I was hoping that you may see a trend in repayment composition as a function of Total Repayments, which is why I sorted it that way; this doesn't seem to be the case.
+
+## Repayment Category Proportion by Total Repayment
+
+Next, let's look at how the proportion of each repayment category varies with Total Repayment. Each point represents a lending agency.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center"}
+names(labs) <- c("consolidation", "rehabilitation", "voluntary_payments", "wage_garnishments")
+
+# Generate faceted plot for all repayment types
+facet_plot <- ggplot(bar_df, aes(total, proportion), labeller = labeller(supp = labs)) + 
+  geom_point(alpha = 0.6) +
+  facet_wrap(nrow = 2, ncol = 2, facets = vars(source), scales = "free", labeller = labeller(source = labs)) +
+  theme(strip.background = element_rect(
+    color="gray", fill="#90F0FA", size=1.5
+  )
+  ) +
+  ylab("Portion of Total Repayments") +
+  xlab("Agency Mean Total Repayments (Millions of U.S. Dollars)") +
+  ggtitle("Portion of Total Repayments by Category for Each Agency")
+facet_plot
+```
+
+From this plot, we can see that there are some general trends between the repayment category proportions and Total Repayment amounts:
+
+* For Consolidation, Voluntary, and Wage Garnishment, proportion decreases with increasing Total Repayment
+* Proportion Rehabilitation increases with increasing Total Repayment
+
+The more interesting thing to note though, is that in all of the graphs there is a group of points that defy this trend, where proportion of Consolidation, Voluntary, and Wage Garnishment is low for low Total Repayment, and proportion Rehabilitation is high for low Total Repayment.
+
+Upon examination however, the outlier groups do not consist of the same agencies across plots. In fact, no single agency is present in all four outlier groups. However, the outliers in all plots except Wage Garnishment consist of these 12 Agencies:
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center"}
+outliers <- loan_summary %>% 
+  filter(total < 100 & consolidation < 0.15 & rehabilitation > 0.65 & voluntary_payments < 0.05)
+outliers %>% 
+  kable() %>% kable_styling()
+```
+
+## Covariation Between Repayment Categories
+
+A final analysis that was investigated was how do the proportion of the different payment types vary together.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center", fig.height=6}
+names(loan_summary)[3] <- paste("Consolidation")
+names(loan_summary)[4] <- paste("Rehabilitation")
+names(loan_summary)[5] <- paste("Voluntary Payments")
+names(loan_summary)[6] <- paste("Wage Garnishments")
+
+pairwise_plot <- loan_summary %>% select(-agency_name, -total) %>%
+  ggpairs(
+    upper = list(continuous = "cor", combo = "box_no_facet", discrete = "facetbar", na = "na"),
+    diag = list(continuous = wrap("barDiag", bins = 12), discrete = "barDiag", na = "naDiag"))
+
+for(i in 1:pairwise_plot$nrow) {
+  for(j in 1:pairwise_plot$ncol){
+    pairwise_plot[i,j] <- pairwise_plot[i,j] + 
+      scale_fill_identity(palette = "Accent")
+  }
+}
+
+pairwise_plot
+```
+
+From this analysis two main observations were made:
+
+* Wage Garnishment does not strongly correlate with any of the other payment types
+* Consolidation, Rehabilitation, and Voluntary Payments do covary, with the following relationships:
+  * Consolidation and Voluntary Payment are negatively correlated with Rehabilitation (r<sup>2</sup> = -0.948 & r<sup>2</sup> = -0.946)
+  * Consolidation is positively correlated with Voluntary Payments (r<sup>2</sup> = 0.953)
+  
+# Conclusions
+
+* Overall repayment category composition for each agency does not depend on total repayment amount
+* 
