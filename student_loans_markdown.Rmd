@@ -1,6 +1,6 @@
 ---
 title: 'tidytuesday #48: Student Loan Debt'
-author: '@KSchackart'
+author: '@SchackartK'
 output:
   html_document: default
   pdf_document: default
@@ -162,3 +162,7 @@ From this analysis two main observations were made:
 * Overall repayment category composition for each `Agency` does not depend on `Total Repayment` amount.
 * `Rehabilitation` is positively correlated with `Total Repayment`, while all other categories are negatively correlated.
 * All repayment types co-vary with strong correlations, with the exception of `Wage Garnishments`.
+
+# Authorship
+
+Kenneth Schackart, [\@SchackartK](https://twitter.com/SchackartK)
