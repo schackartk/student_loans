@@ -6,7 +6,7 @@ output:
 ---
 # The Data
 
-Data represented here originally come from the US Department of Education. These data were fetched from the [tidytuesday Github repo](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-11-26). Information is provided for several financing agencies for student loans in the United States. The information used is the `Total Payment`s to each lending `Agency` (when available) for the fiscal years 2016-2018. This total is broken down into 4 categories:
+Data comes from the US Department of Education. Information is provided for several financing agencies of student loans in the United States. The information used is the `Total Payments` to each lending `Agency` (when available) for the fiscal years 2016-2018. This total is broken down into 4 categories:
 
 * `Consolidation`
 * `Rehabilitation`
@@ -17,7 +17,7 @@ Data represented here originally come from the US Department of Education. These
 
 ## Agency Category Breakdown
 
-Here is how the `Total Repayment` for each `Agency` breaks down by `Repayment Type`, averaged over all years that data were present for that `Agency`.
+Here is how the `Total Repayment` for each `Agency` breaks down by `Repayment Type`, averaged over all years (and quarters) that data were present for that `Agency`.
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center", fig.width=10}
 library(tidyverse)
@@ -90,14 +90,14 @@ column_plot <- ggplot(bar_df) +
   geom_col(mapping = aes(x = agency_name, y = proportion, fill = source)) +
   coord_flip() + xlab(NULL) + ylab("Portion of Total Repayments for Agency") +
   ggtitle("Portion of Repayments by Source", 
-          subtitle = "Mean Total Repayments in Descending Order") +
+          subtitle = "Mean Total Repayments per Quarter in Descending Order") +
   scale_fill_brewer(palette = "Accent") +
   scale_fill_discrete(name = "Payment Category") +
   scale_x_discrete(labels = names_list)
 column_plot
 ```
 
-While this is interesting if you are curious about each individual `Agency`, it does not give much insight into any over all trends. I was hoping that you may see a trend in repayment composition as a function of `Total Repayments`, which is why I sorted it that way; this doesn't seem to be the case.
+While this is interesting if you are curious about each individual `Agency`, it does not give much insight into any over all trends. I was hoping that you may see a trend in repayment composition as a function of `Total Repayments`, which is why I sorted it that way; there doesn't seem to be such a trend.
 
 ## Repayment Category Proportion by Total Repayment
 
@@ -112,19 +112,21 @@ facet_plot <- ggplot(bar_df, aes(total, proportion), labeller = labeller(supp = 
   theme(strip.background = element_rect(
     color="gray", fill="#90F0FA", size=1.5)) +
   ylab("Portion of Total Repayments") +
-  xlab("Agency Mean Total Repayments (Millions of U.S. Dollars)") +
+  xlab("Agency Mean Total Repayments (Millions of U.S. Dollars per Quarter)") +
   ggtitle("Portion of Total Repayments by Category for Each Agency")
 facet_plot
 ```
 
+### Observations
 From this plot, we can see that there are some general trends between the `Repayment Type` proportions and `Total Repayment` amounts:
 
 * For `Consolidation`, `Voluntary Payments`, and `Wage Garnishment`, proportion decreases with increasing `Total Repayment`
 * Proportion `Rehabilitation` increases with increasing `Total Repayment`
 
+### Outliers
 The more interesting thing to note though, is that in all of the graphs there is a group of points that defy this trend, where proportion of `Consolidation`, `Voluntary`, and `Wage Garnishment` is low for low `Total Repayment`, and proportion `Rehabilitation` is high for low `Total Repayment`.
 
-Upon examination however, the outlier groups do not consist of the same `Agency`s across plots. In fact, no single `Agency` is present in all four outlier groups. However, the outliers in all plots except `Wage Garnishment` consist of these 12 `Agency`s:
+Upon examination however, the outlier groups do not consist of the same `Agency`s across plots. In fact, no single `Agency` is present in all four outlier groups. However, the outliers in all plots except `Wage Garnishment` consist of these 12 `Agencies`:
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center"}
 outliers <- loan_summary %>% 
@@ -144,7 +146,7 @@ A final analysis that was investigated was how do the proportion of the differen
 pairwise_plot <- loan_summary %>% select(-agency_name, -total) %>%
   ggpairs(
     upper = list(continuous = "cor", combo = "box_no_facet", discrete = "facetbar", na = "na"),
-    diag = list(continuous = wrap("barDiag", bins = 12), discrete = "barDiag", na = "naDiag"))
+    diag = list(continuous = wrap("barDiag", bins = 25), discrete = "barDiag", na = "naDiag"))
 
 pairwise_plot
 ```
@@ -152,7 +154,7 @@ pairwise_plot
 From this analysis two main observations were made:
 
 * `Wage Garnishment` does not strongly correlate with any of the other payment types
-* `Consolidation`, `Rehabilitation`, and `Voluntary Payments` do covary, with the following relationships:
+* `Consolidation`, `Rehabilitation`, and `Voluntary Payments` do show correlations with each other, with the following relationships:
   * `Consolidation` and `Voluntary Payments` are negatively correlated with `Rehabilitation` (r<sup>2</sup> = -0.948 & r<sup>2</sup> = -0.946)
   * `Consolidation` is positively correlated with `Voluntary Payments` (r<sup>2</sup> = 0.953)
   
@@ -160,7 +162,12 @@ From this analysis two main observations were made:
 
 * Overall repayment category composition for each `Agency` does not depend on `Total Repayment` amount.
 * `Rehabilitation` is positively correlated with `Total Repayment`, while all other categories are negatively correlated.
-* All repayment types co-vary with strong correlations, with the exception of `Wage Garnishments`.
+* All repayment types have strong correlations with one another, with the exception of `Wage Garnishments`.
+
+# Acknowledgements
+
+These data were fetched from the [tidytuesday Github repo](https://github.com/rfordatascience/tidytuesday/tree/master/data/2019/2019-11-26).
+Thank you to the [R for Data Science Community](https://twitter.com/R4DScommunity) for the support and ideas to improve my data analysis and visualization skills.
 
 # Authorship
 
