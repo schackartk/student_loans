@@ -1,9 +1,8 @@
 ---
-title: 'tidytuesday #48: Student Loan Debt'
+title: 'TidyTuesday #48: Student Loan Debt'
 author: '@SchackartK'
 output:
   html_document: default
-  pdf_document: default
 ---
 # The Data
 
@@ -165,4 +164,7 @@ From this analysis two main observations were made:
 
 # Authorship
 
-Kenneth Schackart, [\@SchackartK](https://twitter.com/SchackartK)
+Kenneth Schackart
+
+* Twitter: [\@SchackartK](https://twitter.com/SchackartK)
+* Github:  [schackartk](https://github.com/schackartk)
